@@ -1,2 +1,2 @@
 # Antiplagiat
-Magister Diploma 
+Master’s degree diploma project
