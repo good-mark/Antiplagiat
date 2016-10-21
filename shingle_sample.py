@@ -20,7 +20,7 @@ def canonize(source):
 
 def genshingle(source):
     import binascii
-    shingleLen = 10 #длина шингла
+    shingleLen = 6 #длина шингла
     out = [] 
     for i in range(len(source) - (shingleLen - 1)):
         out.append (binascii.crc32(' '.join( [x for x in source[i:i + shingleLen]] ).encode('utf-8')))
@@ -50,6 +50,7 @@ def main():
     print compaire(sh1, sh2)
     print compaire(sh1, sh3)
     print compaire(sh1, sh4)
+
 
 # Start program
 main()
