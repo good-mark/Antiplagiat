@@ -1,8 +1,11 @@
 # -*- coding: UTF-8 -*-
+from operator import itemgetter
 import hashlib
 import codecs
 import os
 import sqlite3
+
+SHINGLE_LEN = 10
 
 class Database:
     def __init__(self):
@@ -45,10 +48,9 @@ class Antiplagiat:
     Для входящей последовательности слов генерирует шингл, возвращает множество хэшей от шингла. 
     '''
     def generate_shingle(self, source):
-        shingle_len = 10 
         out = [] 
-        for i in range(len(source) - (shingle_len - 1)):
-            out.append (hashlib.md5(' '.join( [x for x in source[i:i + shingle_len]] )).hexdigest())
+        for i in range(len(source) - (SHINGLE_LEN - 1)):
+            out.append (hashlib.md5(' '.join( [x for x in source[i:i + SHINGLE_LEN]] )).hexdigest())
 
         return out
 
@@ -78,6 +80,8 @@ class Antiplagiat:
     '''
     def check(self, testfile):
         sources_list = []
+        sources_by_doc = {}
+        results_list = []
         with open(testfile, 'r') as fin:
             text = fin.read()
             sh = self.generate_shingle(self.canonize(text))
@@ -88,10 +92,43 @@ class Antiplagiat:
                 else:
                     for match in result:
                         list(match).append(inner_index)
+                        
+
+                        ''' Добавляем в словарь, где ключом является имя документа-источника, 
+                        чтобы удобно находить границы заимствования. '''
+                        doc_name = match[0]
+                        if doc_name in sources_by_doc:
+                            sources_by_doc[doc_name].append([match[1], inner_index])
+                        else:
+                            sources_by_doc[doc_name] = [ [match[1], inner_index] ]
+
                     sources_list.extend(result)
                     #print result
 
-        return sources_list
+        ''' Получаем для каждого документа нужные индексы '''
+        for doc, coords in sources_by_doc.iteritems():
+            sorted_coords = sorted(coords, key=itemgetter(0))
+            #print 'coords: ', sorted_coords
+            start_id_in_source = sorted_coords[0][0]
+            start_id_in_test = sorted_coords[0][1]
+
+            end_id_in_source = sorted_coords[0][0]
+            end_id_in_test = sorted_coords[0][1]
+
+            for idx, coord in enumerate(sorted_coords[1:]):
+                #print 'iteration', coord, idx
+                ''' Если отличаются на 1 '''
+                if (coord[0] == sorted_coords[idx][0] + 1) and (idx != len(sorted_coords) - 2):
+                    continue
+                else:
+                    end_id_in_source = coord[0]
+                    end_id_in_test = coord[1]
+                    results_list.append([doc, start_id_in_source, end_id_in_source + SHINGLE_LEN - 1, start_id_in_test, end_id_in_test + SHINGLE_LEN - 1])
+
+                    start_id_in_source = coord[0]
+                    start_id_in_test = coord[1]
+            
+        return results_list
 
 
 
